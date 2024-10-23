@@ -11,7 +11,9 @@ const { createTable, createSummary } = require('./comment')
 
 const packageLockParser = new PackageLockParser()
 
-const getCommentId = async (octokit, oktokitParams, issueNumber, commentHeader) => {
+const COMMENT_IDENTIFIER = '<!-- npm-lockfile-changes-action comment -->'
+
+const getCommentId = async (octokit, oktokitParams, issueNumber) => {
   const currentComments = await octokit.rest.issues.listComments({
     ...oktokitParams,
     issue_number: issueNumber,
@@ -23,9 +25,7 @@ const getCommentId = async (octokit, oktokitParams, issueNumber, commentHeader) 
   }
 
   return currentComments.data
-    .filter(
-      ({ user, body }) => user.login === 'github-actions[bot]' && body.startsWith(commentHeader)
-    )
+    .filter(({ body }) => body.includes(COMMENT_IDENTIFIER))
     .map(({ id }) => id)[0]
 }
 
@@ -123,7 +123,9 @@ const run = async () => {
         '<summary>Click to toggle table visibility</summary>\n<br/>\n\n' +
         diffsTable +
         '\n\n' +
-        '</details>'
+        '</details>' +
+        '\n\n' +
+        COMMENT_IDENTIFIER
 
       if (updateComment) {
         if (commentId) {
