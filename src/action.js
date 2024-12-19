@@ -13,7 +13,7 @@ const packageLockParser = new PackageLockParser()
 
 const COMMENT_IDENTIFIER = '<!-- npm-lockfile-changes-action comment -->'
 
-const getCommentId = async (octokit, oktokitParams, issueNumber) => {
+const getCommentId = async (octokit, oktokitParams, issueNumber, commentHeader) => {
   const currentComments = await octokit.rest.issues.listComments({
     ...oktokitParams,
     issue_number: issueNumber,
@@ -25,7 +25,7 @@ const getCommentId = async (octokit, oktokitParams, issueNumber) => {
   }
 
   return currentComments.data
-    .filter(({ body }) => body.includes(COMMENT_IDENTIFIER))
+    .filter(({ body }) => body.includes(COMMENT_IDENTIFIER) && body.includes(commentHeader))
     .map(({ id }) => id)[0]
 }
 
