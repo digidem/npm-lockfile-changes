@@ -13,7 +13,11 @@ const packageLockParser = new PackageLockParser()
 
 const COMMENT_IDENTIFIER = '<!-- npm-lockfile-changes-action comment -->'
 
-const getCommentId = async (octokit, oktokitParams, issueNumber) => {
+function getCommentIdentifier(path) {
+  return COMMENT_IDENTIFIER.replace('-->', `for ${path} -->`)
+}
+
+const getCommentId = async (octokit, oktokitParams, issueNumber, lockfilePath) => {
   const currentComments = await octokit.rest.issues.listComments({
     ...oktokitParams,
     issue_number: issueNumber,
@@ -24,9 +28,14 @@ const getCommentId = async (octokit, oktokitParams, issueNumber) => {
     throw Error('💥 Cannot fetch PR comments data, aborting!')
   }
 
-  return currentComments.data
-    .filter(({ body }) => body.includes(COMMENT_IDENTIFIER))
-    .map(({ id }) => id)[0]
+  const commentIdentifierWithPath = getCommentIdentifier(lockfilePath)
+
+  const existingComment =
+    currentComments.data.find(({ body }) => body.includes(commentIdentifierWithPath)) ||
+    // Fallback for finding comments that did not include the lockfile path
+    currentComments.data.find(({ body }) => body.includes(COMMENT_IDENTIFIER))
+
+  return existingComment?.id
 }
 
 const getBasePathFromInput = (input) =>
@@ -98,7 +107,7 @@ const run = async () => {
 
     const commentHeader = '## `' + inputPath + '` changes'
     const commentId = updateComment
-      ? await getCommentId(octokit, oktokitParams, number, commentHeader)
+      ? await getCommentId(octokit, oktokitParams, number, inputPath)
       : undefined
     debug('Bot comment ID: ' + commentId)
 
@@ -125,7 +134,7 @@ const run = async () => {
         '\n\n' +
         '</details>' +
         '\n\n' +
-        COMMENT_IDENTIFIER
+        getCommentIdentifier(inputPath)
 
       if (updateComment) {
         if (commentId) {
